@@ -1,0 +1,19 @@
+CREATE TABLE
+    users (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL
+    );
+
+CREATE TABLE
+    trips (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL
+    );
+
+CREATE TABLE
+    seats (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        trip_id INT UNSIGNED DEFAULT NULL,
+        user_id INT UNSIGNED DEFAULT NULL
+    );
