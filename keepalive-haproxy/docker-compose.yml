@@ -1,0 +1,51 @@
+version: '3'
+
+networks:
+  keepalived_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  haproxy_node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: haproxy_node1
+    hostname: haproxy_node1
+    cap_add:
+      - NET_ADMIN       # Required for managing network interfaces
+      - NET_BROADCAST   # Required for VRRP broadcasts
+    networks:
+      keepalived_network:
+        ipv4_address: 172.20.0.2
+    volumes:
+      - ./haproxy/haproxy-node1.cfg:/usr/local/etc/haproxy/haproxy.cfg
+      - ./keepalived/keepalived-node1.conf:/etc/keepalived/keepalived.conf
+    environment:
+      - NODE_NAME=node1
+    ports:
+      - "8081:8404"     # HAProxy stats page for node1
+      - "8001:80"       # HAProxy HTTP port for node1
+
+  haproxy_node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: haproxy_node2
+    hostname: haproxy_node2
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+    networks:
+      keepalived_network:
+        ipv4_address: 172.20.0.3
+    volumes:
+      - ./haproxy/haproxy-node2.cfg:/usr/local/etc/haproxy/haproxy.cfg
+      - ./keepalived/keepalived-node2.conf:/etc/keepalived/keepalived.conf
+    environment:
+      - NODE_NAME=node2
+    ports:
+      - "8082:8404"     # HAProxy stats page for node2
+      - "8002:80"       # HAProxy HTTP port for node2
