@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'mysql-nodes'
+    static_configs:
+      - targets: ['mysql-exporter-primary:9104', 'mysql-exporter-replica1:9104', 'mysql-exporter-replica2:9104']
+        labels:
+          group: 'mysql-cluster'

@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  # Primary MySQL Server
+  mysql-primary:
+    image: mysql:8.0
+    platform: linux/amd64 # Specify x86_64 platform for compatibility
+    container_name: mysql-primary
+    command: --server-id=1 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    volumes:
+      - mysql-primary-data:/var/lib/mysql
+      - ./config/primary.cnf:/etc/mysql/conf.d/my.cnf
+      - ./scripts:/docker-entrypoint-initdb.d
+    networks:
+      - mysql-cluster-network
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s # Give MySQL time to initialize before healthchecks start
+
+  # Replica MySQL Server 1
+  mysql-replica-1:
+    image: mysql:8.0
+    platform: linux/amd64 # Specify x86_64 platform for compatibility
+    container_name: mysql-replica-1
+    command: --server-id=2 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON --log-slave-updates=ON
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    volumes:
+      - mysql-replica-1-data:/var/lib/mysql
+      - ./config/replica.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - mysql-cluster-network
+    ports:
+      - "3307:3306"
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s # Give MySQL time to initialize before healthchecks start
+
+  # Replica MySQL Server 2
+  mysql-replica-2:
+    image: mysql:8.0
+    platform: linux/amd64 # Specify x86_64 platform for compatibility
+    container_name: mysql-replica-2
+    command: --server-id=3 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON --log-slave-updates=ON
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    volumes:
+      - mysql-replica-2-data:/var/lib/mysql
+      - ./config/replica.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - mysql-cluster-network
+    ports:
+      - "3308:3306"
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s # Give MySQL time to initialize before healthchecks start
+
+  # ProxySQL for load balancing
+  proxysql:
+    image: proxysql/proxysql:latest
+    platform: linux/amd64 # Specify x86_64 platform for compatibility
+    container_name: proxysql
+    volumes:
+      - ./config/proxysql.cnf:/etc/proxysql.cnf
+    ports:
+      - "6033:6033" # MySQL client port
+      - "6032:6032" # Admin port
+    networks:
+      - mysql-cluster-network
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+      mysql-replica-1:
+        condition: service_healthy
+      mysql-replica-2:
+        condition: service_healthy
+
+  # Alternative monitoring with Prometheus and Grafana (better ARM64 compatibility)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - mysql-cluster-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - mysql-cluster-network
+    depends_on:
+      - prometheus
+
+  # MySQL exporters for Prometheus
+  mysql-exporter-primary:
+    image: prom/mysqld-exporter:latest
+    platform: linux/amd64
+    container_name: mysql-exporter-primary
+    ports:
+      - "9104:9104"
+    environment:
+      - DATA_SOURCE_NAME=root:rootpass@(mysql-primary:3306)/
+    networks:
+      - mysql-cluster-network
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
+
+  mysql-exporter-replica1:
+    image: prom/mysqld-exporter:latest
+    platform: linux/amd64
+    container_name: mysql-exporter-replica1
+    ports:
+      - "9105:9104"
+    environment:
+      - DATA_SOURCE_NAME=root:rootpass@(mysql-replica-1:3306)/
+    networks:
+      - mysql-cluster-network
+    depends_on:
+      mysql-replica-1:
+        condition: service_healthy
+
+  mysql-exporter-replica2:
+    image: prom/mysqld-exporter:latest
+    platform: linux/amd64
+    container_name: mysql-exporter-replica2
+    ports:
+      - "9106:9104"
+    environment:
+      - DATA_SOURCE_NAME=root:rootpass@(mysql-replica-2:3306)/
+    networks:
+      - mysql-cluster-network
+    depends_on:
+      mysql-replica-2:
+        condition: service_healthy
+
+networks:
+  mysql-cluster-network:
+    driver: bridge
+
+volumes:
+  mysql-primary-data:
+  mysql-replica-1-data:
+  mysql-replica-2-data:
+  prometheus-data:
+  grafana-data:

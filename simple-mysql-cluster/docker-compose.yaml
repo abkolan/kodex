@@ -1,0 +1,59 @@
+services:
+  # Primary MySQL Server
+  mysql-primary:
+    image: mysql:8.0
+    platform: linux/arm64/v8 # Specify ARM64 platform for Apple Silicon
+    container_name: mysql-primary
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    command:
+      - --server-id=1
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-primary-data:/var/lib/mysql
+    networks:
+      - mysql-network
+
+  # Replica MySQL Server
+  mysql-replica:
+    image: mysql:8.0
+    platform: linux/arm64/v8 # Specify ARM64 platform for Apple Silicon
+    container_name: mysql-replica
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    command:
+      - --server-id=2
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --read-only=1
+      - --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-replica-data:/var/lib/mysql
+    networks:
+      - mysql-network
+    depends_on:
+      - mysql-primary
+
+networks:
+  mysql-network:
+    driver: bridge
+
+volumes:
+  mysql-primary-data:
+  mysql-replica-data:

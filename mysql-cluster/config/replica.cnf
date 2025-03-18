@@ -1,0 +1,35 @@
+[mysqld]
+default_authentication_plugin=mysql_native_password
+skip-host-cache
+skip-name-resolve
+datadir=/var/lib/mysql
+socket=/var/run/mysqld/mysqld.sock
+secure-file-priv=/var/lib/mysql-files
+user=mysql
+
+pid-file=/var/run/mysqld/mysqld.pid
+
+# Replication settings (server-id set in docker-compose.yml)
+log_bin=mysql-bin
+binlog_format=ROW
+gtid_mode=ON
+enforce_gtid_consistency=ON
+log_slave_updates=ON
+relay_log=/var/lib/mysql/mysql-relay-bin
+read_only=ON
+# Replica should skip auto-increment conflicts
+slave_skip_errors=1396
+# Set the binary log replication ignored databases
+binlog-ignore-db=performance_schema
+binlog-ignore-db=information_schema
+binlog-ignore-db=mysql
+binlog-ignore-db=sys
+
+# Performance settings
+innodb_buffer_pool_size=256M
+innodb_log_file_size=64M
+innodb_flush_log_at_trx_commit=1
+innodb_flush_method=O_DIRECT
+
+# Connection settings
+max_connections=500

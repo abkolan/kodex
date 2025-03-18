@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  mysql-master:
+    image: mysql:8.0
+    container_name: mysql-master
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: replicated_db
+    volumes:
+      - ./master/my.cnf:/etc/mysql/my.cnf
+      - ./master/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3307:3306"
+    networks:
+      - mysql_network
+
+  mysql-replica:
+    image: mysql:8.0
+    container_name: mysql-replica
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+    volumes:
+      - ./replica/my.cnf:/etc/mysql/my.cnf
+      - ./replica/init.sql:/docker-entrypoint-initdb.d/init.sql
+    depends_on:
+      - mysql-master
+    ports:
+      - "3308:3306"
+    networks:
+      - mysql_network
+
+  pmm-server:
+    image: percona/pmm-server:latest
+    container_name: pmm-server
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - pmm-data:/srv
+    networks:
+      - mysql_network
+
+  pmm-client-master:
+    image: percona/pmm-client:latest
+    container_name: pmm-client-master
+    depends_on:
+      - mysql-master
+      - pmm-server
+    command: >
+      /bin/sh -c " pmm-admin config --server pmm-server; pmm-admin add mysql --username=root --password=rootpass --query-source=slowlog "
+    networks:
+      - mysql_network
+
+  pmm-client-replica:
+    image: percona/pmm-client:latest
+    container_name: pmm-client-replica
+    depends_on:
+      - mysql-replica
+      - pmm-server
+    command: >
+      /bin/sh -c " pmm-admin config --server pmm-server; pmm-admin add mysql --username=root --password=rootpass --query-source=slowlog "
+    networks:
+      - mysql_network
+
+volumes:
+  pmm-data:
+
+
+networks:
+  mysql_network:
