@@ -1,0 +1,8 @@
+# Ignore everything
+*
+
+# Except .go, .mod, and .md files
+!*.go
+!*.mod
+!*.md
+!.gitignore
