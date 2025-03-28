@@ -49,3 +49,16 @@ services:
     ports:
       - "8082:8404"     # HAProxy stats page for node2
       - "8002:80"       # HAProxy HTTP port for node2
+      
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.monitor
+    container_name: ha_monitor
+    networks:
+      keepalived_network:
+        ipv4_address: 172.20.0.10
+    depends_on:
+      - haproxy_node1
+      - haproxy_node2
+    tty: true

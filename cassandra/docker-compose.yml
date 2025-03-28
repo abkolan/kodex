@@ -1,0 +1,96 @@
+version: '3.9'
+
+services:
+  cassandra-1:
+    image: cassandra:latest
+    container_name: cassandra-1
+    hostname: cassandra-1
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_SEEDS=cassandra-1,cassandra-4
+      - CASSANDRA_CLUSTER_NAME=MultiDCCluster
+      - CASSANDRA_DC=DC1
+      - CASSANDRA_RACK=RACK1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    ports:
+      - "9042:9042"
+
+  cassandra-2:
+    image: cassandra:latest
+    container_name: cassandra-2
+    hostname: cassandra-2
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_SEEDS=cassandra-1,cassandra-4
+      - CASSANDRA_CLUSTER_NAME=MultiDCCluster
+      - CASSANDRA_DC=DC1
+      - CASSANDRA_RACK=RACK2
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    depends_on:
+      - cassandra-1
+
+  cassandra-3:
+    image: cassandra:latest
+    container_name: cassandra-3
+    hostname: cassandra-3
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_SEEDS=cassandra-1,cassandra-4
+      - CASSANDRA_CLUSTER_NAME=MultiDCCluster
+      - CASSANDRA_DC=DC1
+      - CASSANDRA_RACK=RACK1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    depends_on:
+      - cassandra-1
+
+  cassandra-4:
+    image: cassandra:latest
+    container_name: cassandra-4
+    hostname: cassandra-4
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_SEEDS=cassandra-1,cassandra-4
+      - CASSANDRA_CLUSTER_NAME=MultiDCCluster
+      - CASSANDRA_DC=DC2
+      - CASSANDRA_RACK=RACK2
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    depends_on:
+      - cassandra-1
+
+  cassandra-5:
+    image: cassandra:latest
+    container_name: cassandra-5
+    hostname: cassandra-5
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_SEEDS=cassandra-1,cassandra-4
+      - CASSANDRA_CLUSTER_NAME=MultiDCCluster
+      - CASSANDRA_DC=DC2
+      - CASSANDRA_RACK=RACK1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    depends_on:
+      - cassandra-4
+
+  cassandra-6:
+    image: cassandra:latest
+    container_name: cassandra-6
+    hostname: cassandra-6
+    networks:
+      - cassandra-net
+    environment:
+      - CASSANDRA_SEEDS=cassandra-1,cassandra-4
+      - CASSANDRA_CLUSTER_NAME=MultiDCCluster
+      - CASSANDRA_DC=DC2
+      - CASSANDRA_RACK=RACK2
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+    depends_on:
+      - cassandra-4
+
+networks:
+  cassandra-net:
+    driver: bridge

@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package.json and package-lock.json files
+COPY scripts/package.json scripts/tsconfig.json ./
+
+# Install dependencies including TypeScript
+RUN npm install
+
+# Copy the TypeScript source
+COPY scripts/check_failover.ts ./
+
+# Install useful tools for debugging
+RUN apk add --no-cache curl iputils bash
+
+# Command to run the script
+CMD ["npm", "start"]
