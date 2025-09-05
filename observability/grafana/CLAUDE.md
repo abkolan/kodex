@@ -1,0 +1,1 @@
+- tell me what you are doing before you run any command, after you analyze the output, give me a tldr of the output and your next action
